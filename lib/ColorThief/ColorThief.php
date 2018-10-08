@@ -136,47 +136,29 @@ class ColorThief
             throw new \InvalidArgumentException('The quality argument must be an integer greater than one.');
         }
 
-        $pixelArray = static::loadImage($sourceImage, $quality, $area);
-        if (!count($pixelArray)) {
+        $histo = [];
+        $pixelArray = static::loadImage($sourceImage, $quality, $area, $histo);
+        if ($pixelArray->getSize() === 0) {
             throw new \RuntimeException('Unable to compute the color palette of a blank or transparent image.', 1);
         }
 
         // Send array to quantize function which clusters values
         // using median cut algorithm
-        $cmap = static::quantize($pixelArray, $colorCount);
+        $cmap = static::quantize($pixelArray, $colorCount, $histo);
         $palette = $cmap->palette();
 
         return $palette;
     }
 
     /**
-     * Histo: 1-d array, giving the number of pixels in each quantized region of color space.
-     *
-     * @param array $pixels
-     *
-     * @return array
-     */
-    private static function getHisto($pixels)
-    {
-        $histo = [];
-
-        foreach ($pixels as $rgb) {
-            list($red, $green, $blue) = static::getColorsFromIndex($rgb);
-            $index = static::getColorIndex($red, $green, $blue);
-            $histo[$index] = (isset($histo[$index]) ? $histo[$index] : 0) + 1;
-        }
-
-        return $histo;
-    }
-
-    /**
      * @param mixed      $sourceImage Path/URL to the image, GD resource, Imagick instance, or image as binary string
      * @param int        $quality
      * @param array|null $area
+     * @param array      $histo Array to store the histogram in while loading pixels
      *
      * @return SplFixedArray
      */
-    private static function loadImage($sourceImage, $quality, array $area = null)
+    private static function loadImage($sourceImage, $quality, array $area = null, &$histo)
     {
         $loader = new ImageLoader();
         $image = $loader->load($sourceImage);
@@ -203,6 +185,7 @@ class ColorThief
         $pixelArray = new SplFixedArray(ceil($pixelCount / $quality));
 
         $size = 0;
+        $histo = [];
         for ($i = 0; $i < $pixelCount; $i = $i + $quality) {
             $x = $startX + ($i % $width);
             $y = (int) ($startY + $i / $width);
@@ -211,7 +194,11 @@ class ColorThief
             if (static::isClearlyVisible($color) && static::isNonWhite($color)) {
                 // Save all bits of the colors in pixelArray
                 $pixelArray[$size++] = static::getColorIndex($color->red, $color->green, $color->blue, 8);
-                // TODO : Compute directly the histogram here ? (save one iteration over all pixels)
+
+                // Compute the histogram while we load the pixels (saves one iteration over all pixels)
+                // The index keeps only the self::SIGBITS most significant bits of each color
+                $index = static::getColorIndex($color->red, $color->green, $color->blue);
+                $histo[$index] = (isset($histo[$index]) ? $histo[$index] : 0) + 1;
             }
         }
 
@@ -490,18 +477,17 @@ class ColorThief
     /**
      * @param SplFixedArray|array $pixels
      * @param $maxColors
+     * @param array               $histo Histogram created while loading pixels
      *
      * @return bool|CMap
      */
-    private static function quantize($pixels, $maxColors)
+    private static function quantize($pixels, $maxColors, &$histo)
     {
         // short-circuit
         if (!count($pixels) || $maxColors < 2 || $maxColors > 256) {
             // echo 'wrong number of maxcolors'."\n";
             return false;
         }
-
-        $histo = static::getHisto($pixels);
 
         // check that we aren't below maxcolors already
         //if (count($histo) <= $maxcolors) {
