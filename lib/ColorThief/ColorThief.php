@@ -351,28 +351,33 @@ class ColorThief
      */
     private static function sumColors($axis, $histo, $vBox)
     {
+        $colorIterateOrders = [
+            'r' => ['r','g','b'],
+            'g' => ['g','r','b'],
+            'b' => ['b','r','g'],
+        ];
+        $colorRangeOrders = [
+            'r' => ['firstColor','secondColor','thirdColor'],
+            'g' => ['secondColor','firstColor','thirdColor'],
+            'b' => ['secondColor','thirdColor','firstColor']
+        ];
+
         $total = 0;
         $partialSum = [];
 
         // The selected axis should be the first range
-        $colorIterateOrder = array_diff(['r', 'g', 'b'], [$axis]);
-        array_unshift($colorIterateOrder, $axis);
+        $colorIterateOrder = $colorIterateOrders[$axis];
 
         // Retrieves iteration ranges
-        list($firstRange, $secondRange, $thirdRange) = static::getVBoxColorRanges($vBox, $colorIterateOrder);
+        $firstRange  = range($vBox->{$colorIterateOrders[$axis][0].'1'}, $vBox->{$colorIterateOrders[$axis][0].'2'});
+        $secondRange = range($vBox->{$colorIterateOrders[$axis][1].'1'}, $vBox->{$colorIterateOrders[$axis][1].'2'});
+        $thirdRange  = range($vBox->{$colorIterateOrders[$axis][2].'1'}, $vBox->{$colorIterateOrders[$axis][2].'2'});
 
         foreach ($firstRange as $firstColor) {
             $sum = 0;
             foreach ($secondRange as $secondColor) {
                 foreach ($thirdRange as $thirdColor) {
-                    list($red, $green, $blue) = static::rearrangeColors(
-                        $colorIterateOrder,
-                        $firstColor,
-                        $secondColor,
-                        $thirdColor
-                    );
-
-                    $index = static::getColorIndex($red, $green, $blue);
+                    $index = static::getColorIndex(${$colorRangeOrders[$axis][0]}, ${$colorRangeOrders[$axis][1]}, ${$colorRangeOrders[$axis][2]});
 
                     if (isset($histo[$index])) {
                         $sum += $histo[$index];
@@ -384,50 +389,6 @@ class ColorThief
         }
 
         return [$total, $partialSum];
-    }
-
-    /**
-     * @param array $order
-     * @param int   $color1
-     * @param int   $color2
-     * @param int   $color3
-     *
-     * @return array
-     */
-    private static function rearrangeColors(array $order, $color1, $color2, $color3)
-    {
-        $data = [
-            $order[0] => $color1,
-            $order[1] => $color2,
-            $order[2] => $color3,
-        ];
-
-        return [
-            $data['r'],
-            $data['g'],
-            $data['b'],
-        ];
-    }
-
-    /**
-     * @param VBox  $vBox
-     * @param array $order
-     *
-     * @return array
-     */
-    private static function getVBoxColorRanges(VBox $vBox, array $order)
-    {
-        $ranges = [
-            'r' => range($vBox->r1, $vBox->r2),
-            'g' => range($vBox->g1, $vBox->g2),
-            'b' => range($vBox->b1, $vBox->b2),
-        ];
-
-        return [
-            $ranges[$order[0]],
-            $ranges[$order[1]],
-            $ranges[$order[2]],
-        ];
     }
 
     /**
