@@ -191,7 +191,11 @@ class ColorThief
             $y = (int) ($startY + $i / $width);
             $color = $image->getPixelColor($x, $y);
 
-            if (static::isClearlyVisible($color) && static::isNonWhite($color)) {
+            if (
+              // Is clearly visible
+              ($color->alpha <= self::THRESHOLD_ALPHA)
+              // Is Non-White
+              && !($color->red > self::THRESHOLD_WHITE && $color->green > self::THRESHOLD_WHITE && $color->blue > self::THRESHOLD_WHITE)) {
                 // Save all bits of the colors in pixelArray
                 $pixelArray[$size++] = static::getColorIndex($color->red, $color->green, $color->blue, 8);
 
@@ -202,6 +206,7 @@ class ColorThief
             }
         }
 
+        // Reset SplFixedArray size as pixels may be ignored due to transparency or being white
         $pixelArray->setSize($size);
 
         // Don't destroy a resource passed by the user !
@@ -212,30 +217,6 @@ class ColorThief
         }
 
         return $pixelArray;
-    }
-
-    /**
-     * @param object $color
-     *
-     * @return bool
-     */
-    protected static function isClearlyVisible($color)
-    {
-        return $color->alpha <= self::THRESHOLD_ALPHA;
-    }
-
-    /**
-     * @param object $color
-     *
-     * @return bool
-     */
-    protected static function isNonWhite($color)
-    {
-        return !(
-            $color->red > self::THRESHOLD_WHITE &&
-            $color->green > self::THRESHOLD_WHITE &&
-            $color->blue > self::THRESHOLD_WHITE
-        );
     }
 
     /**
