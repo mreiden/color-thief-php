@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace ColorThief;
 
@@ -9,15 +9,12 @@ class CMap
 
     public function __construct()
     {
-        $this->vboxes = new PQueue(function ($a, $b) {
-            return ColorThief::naturalOrder(
-                $a['vbox']->count() * $a['vbox']->volume(),
-                $b['vbox']->count() * $b['vbox']->volume()
-            );
+        $this->vboxes = new PQueue(function($a, $b): int {
+            return ($a['vbox']->count() * $a['vbox']->volume() <=> $b['vbox']->count() * $b['vbox']->volume());
         });
     }
 
-    public function push($vbox)
+    public function push(VBox $vbox): void
     {
         $this->vboxes->push([
             'vbox' => $vbox,
@@ -25,7 +22,7 @@ class CMap
         ]);
     }
 
-    public function palette($returnPaletteMetrics = false, $numPixels = 0)
+    public function palette(?bool $returnPaletteMetrics = false, ?int $numPixels = 0): array
     {
         return $this->vboxes->map(function($vb) use ($returnPaletteMetrics, $numPixels) {
             return !$returnPaletteMetrics ? $vb['color'] : [
@@ -37,7 +34,7 @@ class CMap
          });
     }
 
-    public function size()
+    public function size(): int
     {
         return $this->vboxes->size();
     }

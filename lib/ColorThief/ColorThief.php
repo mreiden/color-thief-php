@@ -51,16 +51,10 @@ class ColorThief
     private static $returnPaletteMetrics = false;
 
     /**
-     * Get reduced-space color index for a pixel.
-     *
-     * @param int $red
-     * @param int $green
-     * @param int $blue
-     * @param int $sigBits
-     *
-     * @return int
+     * Get reduced-space color index for a pixel by zeroing non-significant bits and
+     * combining red, green, and blue integers into one by bit-shifting.
      */
-    public static function getColorIndex($red, $green, $blue, $sigBits = self::SIGBITS)
+    public static function getColorIndex(int $red, int $green, int $blue, int $sigBits = self::SIGBITS): int
     {
         $mask = 255 ^ ((1 << (8-$sigBits)) - 1);
 
@@ -69,12 +63,8 @@ class ColorThief
 
     /**
      * Get red, green and blue components from reduced-space color index for a pixel.
-     *
-     * @param int $index
-     *
-     * @return array
      */
-    public static function getColorsFromIndex($index)
+    public static function getColorsFromIndex(int $index): array
     {
         return [
             ($index >> 16) & 255,
@@ -83,20 +73,7 @@ class ColorThief
         ];
     }
 
-    /**
-     * Natural sorting.
-     *
-     * @param int $a
-     * @param int $b
-     *
-     * @return int
-     */
-    public static function naturalOrder($a, $b)
-    {
-        return ($a < $b) ? -1 : (($a > $b) ? 1 : 0);
-    }
-
-    public static function setReturnPaletteMetrics($returnPaletteMetrics)
+    public static function setReturnPaletteMetrics(bool $returnPaletteMetrics): void
     {
         self::$returnPaletteMetrics = $returnPaletteMetrics;
     }
@@ -120,7 +97,7 @@ class ColorThief
      *
      * @return array|bool
      */
-    public static function getColor($sourceImage, $quality = 10, array $area = null, $filterFunction = null)
+    public static function getColor($sourceImage, int $quality = 10, ?array $area = null, ?callable $filterFunction = null)
     {
         $palette = static::getPalette($sourceImage, 5, $quality, $area);
 
@@ -140,7 +117,7 @@ class ColorThief
      *
      * @return array
      */
-    public static function getPalette($sourceImage, $colorCount = 10, $quality = 10, array $area = null, $filterFunction = null)
+    public static function getPalette($sourceImage, int $colorCount = 10, int $quality = 10, ?array $area = null, ?callable $filterFunction = null): array
     {
         if ($colorCount < 2 || $colorCount > 256) {
             throw new \InvalidArgumentException('The number of palette colors must be between 2 and 256 inclusive.');
@@ -179,7 +156,7 @@ class ColorThief
      *
      * @return SplFixedArray
      */
-    private static function loadImage($sourceImage, $quality, array $area = null, &$histo)
+    private static function loadImage($sourceImage, int $quality, ?array $area = null, array &$histo): SplFixedArray
     {
         $loader = new ImageLoader();
         $image = $loader->load($sourceImage);
@@ -189,10 +166,10 @@ class ColorThief
         $height = $image->getHeight();
 
         if ($area) {
-            $startX = isset($area['x']) ? $area['x'] : 0;
-            $startY = isset($area['y']) ? $area['y'] : 0;
-            $width = isset($area['w']) ? $area['w'] : ($width - $startX);
-            $height = isset($area['h']) ? $area['h'] : ($height - $startY);
+            $startX = $area['x'] ?? 0;
+            $startY = $area['y'] ?? 0;
+            $width  = $area['w'] ?? $width - $startX;
+            $height = $area['h'] ?? $height - $startY;
 
             if ((($startX + $width) > $image->getWidth()) || (($startY + $height) > $image->getHeight())) {
                 throw new \InvalidArgumentException('Area is out of image bounds.');
@@ -203,11 +180,11 @@ class ColorThief
 
         // Store the RGB values in an array format suitable for quantize function
         // SplFixedArray is faster and more memory-efficient than normal PHP array.
-        $pixelArray = new SplFixedArray(ceil($pixelCount / $quality));
+        $pixelArray = new SplFixedArray((int) ceil($pixelCount / $quality));
 
         $size = 0;
         $histo = [];
-        for ($i = 0; $i < $pixelCount; $i = $i + $quality) {
+        for ($i = 0; $i < $pixelCount; $i += $quality) {
             $x = $startX + ($i % $width);
             $y = (int) ($startY + $i / $width);
             $color = $image->getPixelColor($x, $y);
@@ -223,7 +200,7 @@ class ColorThief
                 // Compute the histogram while we load the pixels (saves one iteration over all pixels)
                 // The index keeps only the self::SIGBITS most significant bits of each color
                 $index = static::getColorIndex($color->red, $color->green, $color->blue);
-                $histo[$index] = (isset($histo[$index]) ? $histo[$index] : 0) + 1;
+                $histo[$index] = ($histo[$index] ?? 0) + 1;
             }
         }
 
@@ -240,15 +217,10 @@ class ColorThief
         return $pixelArray;
     }
 
-    /**
-     * @param array $histo
-     *
-     * @return VBox
-     */
-    private static function vboxFromHistogram(array $histo)
+    private static function vboxFromHistogram(array $histo): VBox
     {
         $rgbMin = [PHP_INT_MAX, PHP_INT_MAX, PHP_INT_MAX];
-        $rgbMax = [0, 0, 0];
+        $rgbMax = [PHP_INT_MIN, PHP_INT_MIN, PHP_INT_MIN];
 
         // find min/max
         foreach ($histo as $index => $count) {
@@ -267,15 +239,7 @@ class ColorThief
         return new VBox($rgbMin[0], $rgbMax[0], $rgbMin[1], $rgbMax[1], $rgbMin[2], $rgbMax[2], $histo);
     }
 
-    /**
-     * @param string $color
-     * @param VBox   $vBox
-     * @param array  $partialSum
-     * @param int    $total
-     *
-     * @return array
-     */
-    private static function doCut($color, $vBox, $partialSum, $total)
+    private static function doCut(string $color, VBox $vBox, array $partialSum, int $total): array
     {
         $dim1 = $color . '1';
         $dim2 = $color . '2';
@@ -313,12 +277,9 @@ class ColorThief
     }
 
     /**
-     * @param array $histo
-     * @param VBox  $vBox
-     *
      * @return array|void
      */
-    private static function medianCutApply($histo, $vBox)
+    private static function medianCutApply(array $histo, VBox $vBox)
     {
         if (!$vBox->count()) {
             return;
@@ -342,14 +303,8 @@ class ColorThief
 
     /**
      * Find the partial sum arrays along the selected axis.
-     *
-     * @param string $axis  r|g|b
-     * @param array  $histo
-     * @param VBox   $vBox
-     *
-     * @return array [$total, $partialSum]
      */
-    private static function sumColors($axis, $histo, $vBox)
+    private static function sumColors(string $axis, array $histo, VBox $vBox): array
     {
         $colorIterateOrders = [
             'r' => ['r','g','b'],
@@ -393,12 +348,8 @@ class ColorThief
 
     /**
      * Inner function to do the iteration.
-     *
-     * @param PQueue $priorityQueue
-     * @param float  $target
-     * @param array  $histo
      */
-    private static function quantizeIter(&$priorityQueue, $target, $histo)
+    private static function quantizeIter(PQueue &$priorityQueue, float $target, array $histo): void
     {
         $nColors = 1;
         $nIterations = 0;
@@ -437,14 +388,7 @@ class ColorThief
         }
     }
 
-    /**
-     * @param SplFixedArray|array $pixels
-     * @param $maxColors
-     * @param array               $histo Histogram created while loading pixels
-     *
-     * @return bool|CMap
-     */
-    private static function quantize($pixels, $maxColors, &$histo)
+    private static function quantize(SplFixedArray $pixels, int $maxColors, array &$histo): CMap
     {
         // Short-Circuits
         if ($pixels->getSize() === 0) {
@@ -465,8 +409,8 @@ class ColorThief
 
         $vBox = static::vboxFromHistogram($histo);
 
-        $priorityQueue = new PQueue(function ($a, $b) {
-            return self::naturalOrder($a->count(), $b->count());
+        $priorityQueue = new PQueue(function($a, $b): int {
+            return $a->count() <=> $b->count();
         });
         $priorityQueue->push($vBox);
 
@@ -474,8 +418,8 @@ class ColorThief
         static::quantizeIter($priorityQueue, static::FRACT_BY_POPULATIONS * $maxColors, $histo);
 
         // Re-sort by the product of pixel occupancy times the size in color space.
-        $priorityQueue->setComparator(function ($a, $b) {
-            return self::naturalOrder($a->count() * $a->volume(), $b->count() * $b->volume());
+        $priorityQueue->setComparator(function($a, $b): int {
+            return ($a->count() * $a->volume()) <=> ($b->count() * $b->volume());
         });
 
         // next set - generate the median cuts using the (npix * vol) sorting.
@@ -483,7 +427,6 @@ class ColorThief
 
         // calculate the actual colors
         $cmap = new CMap();
-
         for ($i = $priorityQueue->size(); $i > 0; $i--) {
             $cmap->push($priorityQueue->pop());
         }

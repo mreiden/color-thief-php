@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace ColorThief;
 
@@ -17,7 +17,7 @@ class VBox
     private $count_set = false;
     private $avg = false;
 
-    public function __construct($r1, $r2, $g1, $g2, $b1, $b2, $histo)
+    public function __construct(int $r1, int $r2, int $g1, int $g2, int $b1, int $b2, array $histo)
     {
         $this->r1 = $r1;
         $this->r2 = $r2;
@@ -28,7 +28,7 @@ class VBox
         $this->histo = $histo;
     }
 
-    public function volume($force = false)
+    public function volume(?bool $force = false): int
     {
         if (!$this->volume || $force) {
             $this->volume = (($this->r2 - $this->r1 + 1) * ($this->g2 - $this->g1 + 1) * ($this->b2 - $this->b1 + 1));
@@ -37,7 +37,7 @@ class VBox
         return $this->volume;
     }
 
-    public function count($force = false)
+    public function count(?bool $force = false): int
     {
         if (!$this->count_set || $force) {
             $npix = 0;
@@ -72,12 +72,12 @@ class VBox
         return $this->count;
     }
 
-    public function copy()
+    public function copy(): VBox
     {
         return new self($this->r1, $this->r2, $this->g1, $this->g2, $this->b1, $this->b2, $this->histo);
     }
 
-    public function avg($force = false)
+    public function avg(?bool $force = false): array
     {
         if (!$this->avg || $force) {
             $ntot = 0;
@@ -122,7 +122,7 @@ class VBox
         return $this->avg;
     }
 
-    public function contains(array $pixel, $rshift = ColorThief::RSHIFT)
+    public function contains(array $pixel, ?int $rshift = ColorThief::RSHIFT): bool
     {
         $rval = $pixel[0] >> $rshift;
         $gval = $pixel[1] >> $rshift;
@@ -139,10 +139,8 @@ class VBox
 
     /**
      * Determines the longest axis.
-     *
-     * @return string
      */
-    public function longestAxis()
+    public function longestAxis(): string
     {
         // Color-Width for RGB
         $red = $this->r2 - $this->r1;

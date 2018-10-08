@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace ColorThief;
 
@@ -9,24 +9,24 @@ class PQueue
     private $sorted = false;
     private $comparator = null;
 
-    public function __construct($comparator)
+    public function __construct(callable $comparator)
     {
         $this->setComparator($comparator);
     }
 
-    private function sort()
+    private function sort(): void
     {
         usort($this->contents, $this->comparator);
         $this->sorted = true;
     }
 
-    public function push($object)
+    public function push($object): void
     {
         array_push($this->contents, $object);
         $this->sorted = false;
     }
 
-    public function peek($index = null)
+    public function peek(?int $index = null)
     {
         if (!$this->sorted) {
             $this->sort();
@@ -48,23 +48,23 @@ class PQueue
         return array_pop($this->contents);
     }
 
-    public function size()
+    public function size(): int
     {
         return count($this->contents);
     }
 
-    public function map($function)
+    public function map(callable $function): array
     {
         return array_map($function, $this->contents);
     }
 
-    public function setComparator($function)
+    public function setComparator(callable $function): void
     {
         $this->comparator = $function;
         $this->sorted = false;
     }
 
-    public function debug()
+    public function debug(): array
     {
         if (!$this->sorted) {
             $this->sort();
