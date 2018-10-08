@@ -43,6 +43,14 @@ class ColorThief
     const THRESHOLD_WHITE = 250;
 
     /**
+      * Return additional palette properties such as VBox count, VBox volume,
+      * and color prevalence (Vbox->count/totalNonWhitePixels)
+      *
+      * @var returnPaletteMetrics
+      */
+    private static $returnPaletteMetrics = false;
+
+    /**
      * Get reduced-space color index for a pixel.
      *
      * @param int $red
@@ -86,6 +94,11 @@ class ColorThief
     public static function naturalOrder($a, $b)
     {
         return ($a < $b) ? -1 : (($a > $b) ? 1 : 0);
+    }
+
+    public static function setReturnPaletteMetrics($returnPaletteMetrics)
+    {
+        self::$returnPaletteMetrics = $returnPaletteMetrics;
     }
 
     /**
@@ -142,10 +155,8 @@ class ColorThief
             throw new \RuntimeException('Unable to compute the color palette of a blank or transparent image.', 1);
         }
 
-        // Send array to quantize function which clusters values
-        // using median cut algorithm
-        $cmap = static::quantize($pixelArray, $colorCount, $histo);
-        $palette = $cmap->palette();
+        // Send array to quantize function which clusters values using median cut algorithm
+        $palette = static::quantize($pixelArray, $colorCount, $histo)->palette(self::$returnPaletteMetrics, $pixelArray->getSize());
 
         return $palette;
     }

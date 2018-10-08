@@ -25,11 +25,16 @@ class CMap
         ]);
     }
 
-    public function palette()
+    public function palette($returnPaletteMetrics = false, $numPixels = 0)
     {
-        return $this->vboxes->map(function ($vb) {
-            return $vb['color'];
-        });
+        return $this->vboxes->map(function($vb) use ($returnPaletteMetrics, $numPixels) {
+            return !$returnPaletteMetrics ? $vb['color'] : [
+                'color' => $vb['color'],
+                'volume' => $vb['vbox']->volume(),
+                'count' => $vb['vbox']->count(),
+                'prevalence' => ($numPixels < 1) ? -1 : $vb['vbox']->count() / $numPixels,
+            ];
+         });
     }
 
     public function size()
