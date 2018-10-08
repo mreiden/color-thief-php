@@ -120,7 +120,7 @@ class ColorThief
      *
      * @return array|bool
      */
-    public static function getColor($sourceImage, $quality = 10, array $area = null)
+    public static function getColor($sourceImage, $quality = 10, array $area = null, $filterFunction = null)
     {
         $palette = static::getPalette($sourceImage, 5, $quality, $area);
 
@@ -132,14 +132,15 @@ class ColorThief
      *
      * @bug Function does not always return the requested amount of colors. It can be +/- 2.
      *
-     * @param mixed      $sourceImage   Path/URL to the image, GD resource, Imagick instance, or image as binary string
-     * @param int        $colorCount    it determines the size of the palette; the number of colors returned
-     * @param int        $quality       1 is the highest quality
+     * @param mixed      $sourceImage     Path/URL to the image, GD resource, Imagick instance, or image as binary string
+     * @param int        $colorCount      it determines the size of the palette; the number of colors returned
+     * @param int        $quality         1 is the highest quality
      * @param array|null $area[x,y,w,h]
+     * @param callable   $filterFunction  An array_filter compatible function to be used to filter the palette
      *
      * @return array
      */
-    public static function getPalette($sourceImage, $colorCount = 10, $quality = 10, array $area = null)
+    public static function getPalette($sourceImage, $colorCount = 10, $quality = 10, array $area = null, $filterFunction = null)
     {
         if ($colorCount < 2 || $colorCount > 256) {
             throw new \InvalidArgumentException('The number of palette colors must be between 2 and 256 inclusive.');
@@ -157,6 +158,15 @@ class ColorThief
 
         // Send array to quantize function which clusters values using median cut algorithm
         $palette = static::quantize($pixelArray, $colorCount, $histo)->palette(self::$returnPaletteMetrics, $pixelArray->getSize());
+
+        if (null !== $filterFunction) {
+            $fallbackColor = $palette[0];
+            $palette = array_filter($palette, $filterFunction);
+            if (count($palette) === 0) {
+                // The filter removed all the palette colors, so use the first as a fallback
+                $palette[] = $fallbackColor;
+            }
+        }
 
         return $palette;
     }
