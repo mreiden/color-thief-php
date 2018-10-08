@@ -446,11 +446,17 @@ class ColorThief
      */
     private static function quantize($pixels, $maxColors, &$histo)
     {
-        // short-circuit
-        if (!count($pixels) || $maxColors < 2 || $maxColors > 256) {
-            // echo 'wrong number of maxcolors'."\n";
-            return false;
+        // Short-Circuits
+        if ($pixels->getSize() === 0) {
+            throw InvalidArgumentException('Zero useable pixels found in image.');
         }
+        if ($maxColors < 2 || $maxColors > 256) {
+            throw InvalidArgumentException('The maxColors parameter must be between 2 and 256 inclusive.');
+        }
+        if (count($histo) === 0) {
+            throw InvalidArgumentException('Image produced an empty histogram.');
+        }
+
 
         // check that we aren't below maxcolors already
         //if (count($histo) <= $maxcolors) {
